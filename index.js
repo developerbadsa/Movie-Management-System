@@ -18,7 +18,7 @@ const authenticate = (req, res, next) => {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        const decoded = jwt.verify(token, process.env.SECRET_KEY_JWT);
         req.user = decoded;
         next();
     } catch (error) {
@@ -54,7 +54,8 @@ app.post('/login', async (req, res) => {
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) return res.status(401).json({ message: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'your_secret_key', { expiresIn: '1h' });
+        const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || process.env.SECRET_KEY_JWT, { expiresIn: '1h' });
+        // const token = 'test'
         res.status(200).json({ message: 'Login successful', token });
     } catch (error) {
         res.status(500).json({ message: 'Error logging in', error });
@@ -62,27 +63,6 @@ app.post('/login', async (req, res) => {
 });
 
 
-// Admin actions: Approve or reject reports
-app.post('/reports/:id/:action', authenticate, async (req, res) => {
-    const { id, action } = req.params;
-
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Unauthorized' });
-    }
-
-    try {
-        const report = await prisma.report.findUnique({ where: { id: Number(id) } });
-        if (!report) return res.status(404).json({ message: 'Report not found' });
-
-        const updatedReport = await prisma.report.update({
-            where: { id: Number(id) },
-            data: { status: action === 'approve' ? 'Approved' : 'Rejected' },
-        });
-        res.status(200).json({ message: `Report ${action}d`, updatedReport });
-    } catch (error) {
-        res.status(500).json({ message: 'Error processing report', error });
-    }
-});
 
 app.get('/test', (req, res)=>{
     console.log('show test')
