@@ -1,0 +1,48 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id       Int      @id @default(autoincrement())
+  username String
+  email    String   @unique
+  password String
+  role     String   // 'admin' or 'user'
+  movies   Movie[]  // One-to-many relation with Movie
+  ratings  Rating[] // One-to-many relation with Rating
+  reports  Report[] // One-to-many relation with Report
+}
+
+model Movie {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  creatorId   Int
+  creator     User      @relation(fields: [creatorId], references: [id]) // Relation to User
+  ratings     Rating[]  // One-to-many relation with Rating
+  reports     Report[]  // One-to-many relation with Report
+}
+
+model Rating {
+  id      Int    @id @default(autoincrement())
+  value   Int
+  movieId Int
+  movie   Movie  @relation(fields: [movieId], references: [id]) // Relation to Movie
+  userId  Int
+  user    User   @relation(fields: [userId], references: [id]) // Relation to User
+}
+
+model Report {
+  id      Int    @id @default(autoincrement())
+  reason  String
+  status  String? // 'Approved' or 'Rejected'
+  movieId Int
+  movie   Movie  @relation(fields: [movieId], references: [id]) // Relation to Movie
+  userId  Int
+  user    User   @relation(fields: [userId], references: [id]) // Relation to User
+}
