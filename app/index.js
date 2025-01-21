@@ -39,7 +39,7 @@ const authenticate = (req, res, next) => {
 // Middleware for admin access
 const adminOnly = (req, res, next) => {
   if (req.user.role !== "ADMIN") {
-    return res.status(403).json({ message: "Access denied" });
+    return res.status(403).json({ message: "Access denied, Try With Admin role" });
   }
   next(); 
 };
@@ -81,7 +81,7 @@ app.post("/login", async (req, res) => {
     console.log(password, user.password)
 
 
-    
+
     if (!isPasswordValid)
       return res.status(401).json({ message: "Invalid credentials" });
 
