@@ -1,11 +1,10 @@
-// Movie Management System using Node.js
-
 // Import necessary modules
 const express = require("express");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { PrismaClient } = require("@prisma/client");
+require("dotenv").config();
 
 const app = express();
 const prisma = new PrismaClient();
@@ -20,21 +19,26 @@ const authenticate = (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized: No token provided" });
   }
 
-  // Remove 'Bearer ' prefix
-  const token = authHeader.split(" ")[1]; // Split and get the second part
-  console.log(token);
-
+  const token = authHeader.split(" ")[1];
   if (!token) {
     return res.status(401).json({ message: "Unauthorized: Token missing" });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.SECRET_KEY_JWT);
-    req.user = decoded; // Attach the decoded token payload to `req.user`
-    next(); // Proceed to the next middleware or route handler
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
   } catch (error) {
     return res.status(403).json({ message: "Invalid token" });
   }
+};
+
+// Middleware for admin access
+const adminOnly = (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ message: "Access denied" });
+  }
+  next();
 };
 
 // User registration
@@ -42,12 +46,19 @@ app.post("/register", async (req, res) => {
   const { username, email, password, role } = req.body;
   const hashedPassword = await bcrypt.hash(password, 10);
 
+  console.log(
+    prisma.user.create({
+      data: { username, email, password: hashedPassword, role },
+    })
+  );
+
   try {
     const user = await prisma.user.create({
       data: { username, email, password: hashedPassword, role },
     });
     res.status(201).json({ message: "User created", user });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Error creating user", error });
   }
 });
@@ -56,8 +67,12 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
+
   try {
     const user = await prisma.user.findUnique({ where: { email } });
+
+    console.log(user)
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -66,42 +81,52 @@ app.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || process.env.SECRET_KEY_JWT,
+      process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
-    // const token = 'test'
     res.status(200).json({ message: "Login successful", token });
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error });
   }
 });
 
-// Create movie
+// Create a movie
 app.post("/movies", authenticate, async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, releasedAt, duration, genre, language } =
+    req.body;
 
-  console.log(req.user);
+  console.log(req.user.id);
 
+ 
   try {
     const movie = await prisma.movie.create({
       data: {
-        title,
-        description,
-        creatorId: req.user.id,
+        title: title,
+        description:description,
+        releasedAt: new Date(releasedAt), // Convert string to Date object
+        duration:duration,
+        genre: genre,
+        language: language,
+        creator: {
+          connect: { id: req.user.id }, // Associate with the logged-in user
+        },
       },
     });
-
-    console.log(movie);
+  
     res.status(201).json({ message: "Movie created", movie });
   } catch (error) {
-    // console.log(error)
+    console.error(error);
     res.status(500).json({ message: "Error creating movie", error });
   }
+  
+
+
 });
 
-app.get("/test", (req, res) => {
-  console.log("show test");
-  res.send("bismillah");
+
+app.get("/test", async (req, res) => {
+  console.log("test");
+  res.send("test");
 });
 
 // Start the server

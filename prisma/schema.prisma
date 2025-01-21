@@ -7,42 +7,66 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
-  id       Int      @id @default(autoincrement())
-  username String
-  email    String   @unique
-  password String
-  role     String   // 'admin' or 'user'
-  movies   Movie[]  // One-to-many relation with Movie
-  ratings  Rating[] // One-to-many relation with Rating
-  reports  Report[] // One-to-many relation with Report
+  id         Int      @id @default(autoincrement())
+  username   String
+  email      String   @unique
+  password   String
+  role       Role
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  movies     Movie[]
+  ratings    Rating[]
+  reports    Report[]
 }
 
 model Movie {
   id          Int       @id @default(autoincrement())
   title       String
   description String
+  releasedAt  DateTime
+  duration    Int
+  genre       String
+  language    String
   creatorId   Int
-  creator     User      @relation(fields: [creatorId], references: [id]) // Relation to User
-  ratings     Rating[]  // One-to-many relation with Rating
-  reports     Report[]  // One-to-many relation with Report
+  creator     User      @relation(fields: [creatorId], references: [id])
+  ratings     Rating[]
+  reports     Report[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
+
 model Rating {
-  id      Int    @id @default(autoincrement())
-  value   Int
-  movieId Int
-  movie   Movie  @relation(fields: [movieId], references: [id]) // Relation to Movie
-  userId  Int
-  user    User   @relation(fields: [userId], references: [id]) // Relation to User
+  id        Int      @id @default(autoincrement())
+  score     Int
+  movieId   Int
+  movie     Movie    @relation(fields: [movieId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Report {
-  id      Int    @id @default(autoincrement())
-  reason  String
-  status  String? // 'Approved' or 'Rejected'
-  movieId Int
-  movie   Movie  @relation(fields: [movieId], references: [id]) // Relation to Movie
-  userId  Int
-  user    User   @relation(fields: [userId], references: [id]) // Relation to User
+  id        Int          @id @default(autoincrement())
+  reason    String
+  status    ReportStatus @default(PENDING)
+  movieId   Int
+  movie     Movie        @relation(fields: [movieId], references: [id])
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 }
