@@ -35,7 +35,7 @@ const authenticate = (req, res, next) => {
 
 // Middleware for admin access
 const adminOnly = (req, res, next) => {
-  if (req.user.role !== "admin") {
+  if (req.user.role !== "ADMIN") {
     return res.status(403).json({ message: "Access denied" });
   }
   next();
@@ -218,6 +218,97 @@ app.post("/movies/:id/rate", authenticate, async (req, res) => {
     res.status(500).json({ message: "Error rating movie", error });
   }
 });
+
+
+
+
+
+app.post("/movies/:id/report", authenticate, async (req, res) => {
+  const movieId = parseInt(req.params.id);
+  const {reason} = req.body; 
+
+  try {
+    // Ensure the movie exists
+    const movie = await prisma.movie.findUnique({
+      where: { id: movieId },
+    });
+
+    if (!movie) {
+      return res.status(404).json({ message: "Movie not found" });
+    }
+
+    // Create the report
+    const report = await prisma.report.create({
+      data: {
+        reason,
+        movie: {
+          connect: { id: movieId }, // Link to the existing movie
+        },
+        user: {
+          connect: { id: req.user.id }, // Link to the reporting user
+        },
+      },
+    });
+
+    res.status(201).json({ message: "Movie reported successfully", report });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error reporting movie", error });
+  }
+});
+
+
+
+
+
+
+// Admin: View reported movies
+app.get("/admin/reports", authenticate, adminOnly, async (req, res) => {
+
+  try {
+    const reports = await prisma.report.findMany({
+      include: { movie: true },
+    });
+    res.status(200).json(reports);
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: "Error fetching reports", error });
+  }
+});
+
+
+
+// Admin: Approve or reject a report
+app.post(
+  "/admin/reports/:id/resolve",
+  authenticate,
+  adminOnly,
+  async (req, res) => {
+    const reportId = parseInt(req.params.id);
+    const { action } = req.body; // "approve" or "reject"
+
+    try {
+      if (action === "approve") {
+        await prisma.report.update({
+          where: { id: reportId },
+          data: { status: "APPROVED" },
+        });
+        res.status(200).json({ message: "Report approved" });
+      } else if (action === "reject") {
+        await prisma.report.update({
+          where: { id: reportId },
+          data: { status: "REJECTED" },
+        });
+        res.status(200).json({ message: "Report rejected" });
+      } else {
+        res.status(400).json({ message: "Invalid action" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Error resolving report", error });
+    }
+  }
+);
+
 
 
 app.get("/test", async (req, res) => {
