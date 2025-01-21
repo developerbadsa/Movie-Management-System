@@ -123,6 +123,48 @@ app.post("/movies", authenticate, async (req, res) => {
 
 });
 
+// Update a movie
+app.put("/movies/:id", authenticate, async (req, res) => {
+  const movieId = parseInt(req.params.id); // Get movie ID from URL
+  const { title, description, releasedAt, duration, genre, language } = req.body;
+
+  try {
+    // Check if the movie exists and if the user is the creator
+    const movie = await prisma.movie.findUnique({
+      where: { id: movieId },
+    });
+
+    if (!movie) {
+      return res.status(404).json({ message: "Movie not found" });
+    }
+
+    if (movie.creatorId !== req.user.id) {
+      return res.status(403).json({ message: "You are not allowed to update this movie" });
+    }
+
+    // Update the movie
+    const updatedMovie = await prisma.movie.update({
+      where: { id: movieId },
+      data: {
+        title: title || movie.title, // Only update if provided
+        description: description || movie.description,
+        releasedAt: releasedAt ? new Date(releasedAt) : movie.releasedAt,
+        duration: duration || movie.duration,
+        genre: genre || movie.genre,
+        language: language || movie.language,
+      },
+    });
+
+    res.status(200).json({ message: "Movie updated successfully", movie: updatedMovie });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating movie", error });
+  }
+});
+
+
+
+
 
 app.get("/test", async (req, res) => {
   console.log("test");
