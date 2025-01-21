@@ -8,8 +8,11 @@ require("dotenv").config();
 
 const app = express();
 const prisma = new PrismaClient();
+const cors = require("cors");
 
 app.use(bodyParser.json());
+app.use(cors());
+
 
 // Middleware for authentication
 const authenticate = (req, res, next) => {
@@ -38,7 +41,7 @@ const adminOnly = (req, res, next) => {
   if (req.user.role !== "ADMIN") {
     return res.status(403).json({ message: "Access denied" });
   }
-  next();
+  next(); 
 };
 
 // User registration
@@ -71,11 +74,14 @@ app.post("/login", async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { email } });
 
-    console.log(user)
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log(password, user.password)
+
+
+    
     if (!isPasswordValid)
       return res.status(401).json({ message: "Invalid credentials" });
 
