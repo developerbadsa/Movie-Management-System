@@ -92,20 +92,26 @@ app.post("/login", async (req, res) => {
 
 
 // Show all movies
+// View all movies
 app.get("/movies", authenticate, async (req, res) => {
-
- 
   try {
-    const movie = await prisma.movie.findMany()
-  
-    res.status(201).json({ message: "All Movies", movie });
+    const movies = await prisma.movie.findMany({
+      include: { ratings: true },
+    });
+    const moviesWithRatings = movies.map((movie) => {
+      const avgRating =
+        movie.ratings.reduce((acc, rating) => acc + rating.score, 0) /
+        (movie.ratings.length || 1);
+      return {
+        ...movie,
+        avgRating: avgRating.toFixed(1),
+        totalRatings: movie.ratings.length,
+      };
+    });
+    res.status(200).json(moviesWithRatings);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error showing movie", error });
+    res.status(500).json({ message: "Error fetching movies", error });
   }
-  
-
-
 });
 
 // Create a movie
@@ -182,6 +188,36 @@ app.put("/movies/:id", authenticate, async (req, res) => {
 
 
 
+// Rate a movie
+app.post("/movies/:id/rate", authenticate, async (req, res) => {
+  const movieId = parseInt(req.params.id);
+  const { score } = req.body;
+
+  if (score < 1 || score > 5) {
+    return res.status(400).json({ message: "Rating must be between 1 and 5" });
+  }
+
+  try {
+    const existingRating = await prisma.rating.findFirst({
+      where: { movieId, userId: req.user.id },
+    });
+
+    if (existingRating) {
+      await prisma.rating.update({
+        where: { id: existingRating.id },
+        data: { score },
+      });
+      res.status(200).json({ message: "Rating updated" });
+    } else {
+      await prisma.rating.create({
+        data: { score, movieId, userId: req.user.id },
+      });
+      res.status(201).json({ message: "Rating added" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Error rating movie", error });
+  }
+});
 
 
 app.get("/test", async (req, res) => {
