@@ -90,6 +90,24 @@ app.post("/login", async (req, res) => {
   }
 });
 
+
+// Show all movies
+app.get("/movies", authenticate, async (req, res) => {
+
+ 
+  try {
+    const movie = await prisma.movie.findMany()
+  
+    res.status(201).json({ message: "All Movies", movie });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error showing movie", error });
+  }
+  
+
+
+});
+
 // Create a movie
 app.post("/movies", authenticate, async (req, res) => {
   const { title, description, releasedAt, duration, genre, language } =
